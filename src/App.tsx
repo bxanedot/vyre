@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import { Activity, ArrowDownRight, ArrowUpRight, BarChart3, ChevronDown, CircleHelp, Clock3, Crosshair, Gamepad2, Gauge, History, LayoutDashboard, Play, Radar, RotateCcw, Settings2, ShieldCheck, Signal, SlidersHorizontal, Wifi, Zap } from "lucide-react";
+import { Activity, ArrowDownRight, ArrowUpRight, BarChart3, ChevronDown, CircleHelp, Clock3, Crosshair, Gamepad2, Gauge, History, LayoutDashboard, Radar, RotateCcw, Settings2, ShieldCheck, Signal, SlidersHorizontal, Wifi, Zap } from "lucide-react";
 import type { Game, HistoryPoint, Sample, Settings, View } from "./types";
 
 const defaults: Settings = { internet_target: "1.1.1.1", game_target: "", interval_seconds: 5, auto_detect: true };

@@ -14,13 +14,20 @@ pub struct Probe {
 /// Accept only bare hostnames, IPv4 or IPv6 literals. No whitespace, flags,
 /// URLs, ports, command separators, userinfo, or shell interpretation.
 pub fn valid_host(s: &str) -> bool {
-    !s.is_empty()
-        && s.len() <= 253
-        && s.chars().next().is_some_and(|c| c.is_ascii_alphanumeric() || c == ':')
-        && s.chars().last().is_some_and(|c| c.is_ascii_alphanumeric())
-        && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == ':')
-        && !s.contains("..")
-        && !s.contains("::ffff:")
+    if s.is_empty() || s.len() > 253 {
+        return false;
+    }
+    if s.contains(':') {
+        // Colons are only allowed in a valid IPv6 address, never host:port.
+        return s.parse::<std::net::IpAddr>().is_ok();
+    }
+    s.split('.').all(|label| {
+        !label.is_empty()
+            && label.len() <= 63
+            && label.as_bytes()[0].is_ascii_alphanumeric()
+            && label.as_bytes()[label.len() - 1].is_ascii_alphanumeric()
+            && label.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'-')
+    })
 }
 
 /// Parse only recognized echo-response timing fields, never a min/avg/max
@@ -82,8 +89,6 @@ mod tests {
         assert!(valid_host("eu.example.com"));
         assert!(valid_host("2001:db8::1"));
         for s in ["-f", "https://example.com", "example.com:443", "example.com;whoami", "foo bar", ""] {
-            // 'example.com:443' is syntactically ambiguous with IPv6; rejected by application policy below
-            if s == "example.com:443" { continue; }
             assert!(!valid_host(s), "Unexpected accepted target: {s}");
         }
     }
