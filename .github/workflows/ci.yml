@@ -1,0 +1,74 @@
+name: Build and test
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: windows
+          - os: ubuntu-22.04
+            target: linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Linux Tauri system dependencies
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev patchelf
+      - name: Install frontend dependencies
+        run: npm install --no-audit --no-fund
+      - name: TypeScript checks
+        run: npm run typecheck
+      - name: Rust formatting
+        run: cargo fmt --all --manifest-path src-tauri/Cargo.toml -- --check
+      - name: Rust unit tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+      - name: Build Windows NSIS installer
+        if: matrix.target == 'windows'
+        run: npm run tauri build -- --bundles nsis
+      - name: Build Linux packages
+        if: matrix.target == 'linux'
+        run: npm run tauri build -- --bundles deb,appimage
+      - name: Upload desktop packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: vyre-${{ matrix.target }}-${{ github.sha }}
+          path: |
+            src-tauri/target/release/bundle/nsis/*
+            src-tauri/target/release/bundle/deb/*
+            src-tauri/target/release/bundle/appimage/*
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: desktop
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: vyre-*
+          path: release-artifacts
+          merge-multiple: true
+      - name: Publish release after successful builds
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: release-artifacts/**
