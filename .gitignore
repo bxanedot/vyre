@@ -1,7 +1,0 @@
-node_modules/
-dist/
-src-tauri/target/
-*.log
-.env
-.vscode/
-.DS_Store
